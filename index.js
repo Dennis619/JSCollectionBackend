@@ -1,37 +1,42 @@
 import express from "express";
 import pg from "pg";
 import bodyParser from "body-parser";
-import cors from "cors"; //allow our react app to communicate with our server
+import cors from "cors"; // Allow our React app to communicate with our server
 import bcrypt from "bcrypt";
-import session from "express-session"; //allow us to set up session to save user log ins
+import session from "express-session"; // Allow us to set up session to save user logins
 import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import P_LocalStrategy from "passport-local";
 import jwt from "jsonwebtoken";
 import P_JwtStrategy from "passport-jwt";
 import multer from "multer";
-import env from "dotenv";
+import dotenv from "dotenv"; // Corrected import for dotenv
 import nodemailer from "nodemailer";
-import fs, { copyFile } from "fs";
+import fs from "fs"; // Removed unused import copyFile
 import path from "path";
-import { pgDump, pgRestore } from "pg-dump-restore";
+import { pgDump, pgRestore } from "pg-dump-restore"; // Ensure these are needed
 import cron from "node-cron";
-import { to as copyTo, from as copyFrom } from "pg-copy-streams";
-import { pipeline } from "node:stream/promises";
+import { to as copyTo, from as copyFrom } from "pg-copy-streams"; // Ensure these are needed
+import { pipeline } from "stream/promises"; // Updated import
 
-env.config();
+// Load environment variables
+dotenv.config();
+
 const { Strategy: LocalStrategy } = P_LocalStrategy;
 const { Strategy: JwtStrategy, ExtractJwt } = P_JwtStrategy;
 
-const port = 5000;
+const port = process.env.PORT || 5000; // Use PORT environment variable if available
 const app = express();
 
-//used for destructive task like delete all users
+// Used for destructive tasks like deleting all users
 const masterKey = process.env.SESSION_MASTER_KEY;
 const jwtTokenSecret = process.env.SESSION_JWT_TOKEN_SECRET;
 const saltRounds = 10;
+
+// Initialize PostgreSQL session store
 const pgSession = connectPgSimple(session);
-//all database tables
+
+// All database tables
 const allDatabaseTables = [
   "about",
   "categories",
@@ -45,7 +50,7 @@ const allDatabaseTables = [
   "users",
 ];
 
-//setup Nodemailer
+// Setup Nodemailer
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -57,27 +62,43 @@ const transporter = nodemailer.createTransport({
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    return cb(null, "../Client/public/Images/All_Images");
+    cb(null, path.join(__dirname, "../Client/public/Images/All_Images")); // Use path.join for cross-platform compatibility
   },
   filename: (req, file, cb) => {
-    return cb(null, `${file.originalname}`);
+    cb(null, file.originalname); // Fixed template string usage
   },
 });
 
-//multer middleware
+// Multer middleware
 const upload = multer({ storage });
 
-//connect to db
+/*
+// Connect to the database using connection pool
 const db = new pg.Pool({
   user: process.env.SESSION_DATABASE_USER,
   host: process.env.SESSION_DATABASE_HOST,
   database: process.env.SESSION_DATABASE_NAME,
   password: process.env.SESSION_DATABASE_PASSWORD,
-  port: 5432,
+  port: process.env.SESSION_DATABASE_PORT || 5432, // Use environment variable for port if defined
+});
+*/
+const db = new pg.Pool({
+  user: process.env.SESSION_DATABASE_USER,
+  host: process.env.SESSION_DATABASE_HOST,
+  database: process.env.SESSION_DATABASE_NAME,
+  password: process.env.SESSION_DATABASE_PASSWORD,
+  port: process.env.SESSION_DATABASE_PORT || 5432, // Use environment variable for port if defined
+  ssl: {
+    rejectUnauthorized: false, // Set to true in production with a valid certificate
+  },
 });
 
-db.connect();
+// Test the database connection
+db.connect()
+  .then(() => console.log("Connected to the database"))
+  .catch((err) => console.error("Database connection error", err));
 
+// Middleware setup for CORS and body parsing
 app.use(
   cors({
     origin: process.env.SESSION_CORS_CLIENT_URL,
@@ -87,27 +108,28 @@ app.use(
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Session management setup
 app.use(
   session({
     store: new pgSession({
       pool: db,
-      tableName: "user_sessions",
+      tableName: "user_sessions", // Table to store sessions in PostgreSQL
     }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24,
-      secure: false,
+      maxAge: 1000 * 60 * 60 * 24, // Expire in 1 day
+      secure: false, // Set to true if using HTTPS
       httpOnly: true,
       sameSite: "lax",
-    }, //expire in 1 day
+    },
   })
 );
 
+// Initialize Passport.js middleware for authentication
 app.use(passport.initialize());
 app.use(passport.session());
-
 /*************BACK UP DATABASE **********/
 //backUp Directory
 const backupDir = path.join(process.cwd(), "back_up");
