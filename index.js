@@ -115,7 +115,7 @@ db.connect()
 // Middleware setup for CORS and body parsing
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: process.env.SESSION_CORS_CLIENT_URL,
     credentials: true,
   })
 );
