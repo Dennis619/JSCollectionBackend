@@ -50,12 +50,26 @@ const allDatabaseTables = [
   "users",
 ];
 
+//nodmailer for gmail
 // Setup Nodemailer
+/*
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.SESSION_EMAIL_SENDER,
     pass: process.env.SESSION_EMAIL_SENDER_PASSWORD,
+  },
+});
+*/
+
+//nodmaile for cpanel
+const transporter = nodemailer.createTransport({
+  host: "mail.jscollection.co.ke", // SMTP Host
+  port: 465, // Use 465 for SSL or 587 for TLS
+  secure: true, // true for SSL, false for TLS
+  auth: {
+    user: process.env.SESSION_EMAIL_SENDER, // Your cPanel email
+    pass: process.env.SESSION_EMAIL_SENDER_PASSWORD, // Your cPanel email password
   },
 });
 
@@ -101,7 +115,7 @@ db.connect()
 // Middleware setup for CORS and body parsing
 app.use(
   cors({
-    origin: process.env.SESSION_CORS_CLIENT_URL,
+    origin: "http://localhost:3000",
     credentials: true,
   })
 );
@@ -930,40 +944,43 @@ app.delete("/users-session-delete", (req, res) => {
 });
 
 //login user with passport local store sesssion
-app.post("/users-login", function (req, res, next) {
-  passport.authenticate("local", (err, user, info) => {
-    if (err) return next(err);
-    if (!user) {
-      //display wrong login info
-      return res.status(401).send(info);
-    }
-
-    //successful
-    req.login(user, { session: false }, (err) => {
+app.post(
+  "https://jscollectionbackend.onrender.com/users-login",
+  function (req, res, next) {
+    passport.authenticate("local", (err, user, info) => {
       if (err) return next(err);
+      if (!user) {
+        //display wrong login info
+        return res.status(401).send(info);
+      }
 
-      //generate token when user is logging in
-      const token = jwt.sign(
-        {
-          user_id: req.user.user_id,
-        },
-        jwtTokenSecret,
-        { expiresIn: "10h" }
-      );
+      //successful
+      req.login(user, { session: false }, (err) => {
+        if (err) return next(err);
 
-      //req.user contains the authenticated user
-      return res.status(201).json({
-        user: {
-          user_id: req.user.user_id,
-          username: req.user.username,
-          email: req.user.email,
-          user_type: req.user.user_type,
-        },
-        token: token,
+        //generate token when user is logging in
+        const token = jwt.sign(
+          {
+            user_id: req.user.user_id,
+          },
+          jwtTokenSecret,
+          { expiresIn: "10h" }
+        );
+
+        //req.user contains the authenticated user
+        return res.status(201).json({
+          user: {
+            user_id: req.user.user_id,
+            username: req.user.username,
+            email: req.user.email,
+            user_type: req.user.user_type,
+          },
+          token: token,
+        });
       });
-    });
-  })(req, res, next);
-});
+    })(req, res, next);
+  }
+);
 
 //authenticate user session
 app.get(
