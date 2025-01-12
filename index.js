@@ -944,43 +944,40 @@ app.delete("/users-session-delete", (req, res) => {
 });
 
 //login user with passport local store sesssion
-app.post(
-  "https://jscollectionbackend.onrender.com/users-login",
-  function (req, res, next) {
-    passport.authenticate("local", (err, user, info) => {
+app.post("/users-login", function (req, res, next) {
+  passport.authenticate("local", (err, user, info) => {
+    if (err) return next(err);
+    if (!user) {
+      //display wrong login info
+      return res.status(401).send(info);
+    }
+
+    //successful
+    req.login(user, { session: false }, (err) => {
       if (err) return next(err);
-      if (!user) {
-        //display wrong login info
-        return res.status(401).send(info);
-      }
 
-      //successful
-      req.login(user, { session: false }, (err) => {
-        if (err) return next(err);
+      //generate token when user is logging in
+      const token = jwt.sign(
+        {
+          user_id: req.user.user_id,
+        },
+        jwtTokenSecret,
+        { expiresIn: "10h" }
+      );
 
-        //generate token when user is logging in
-        const token = jwt.sign(
-          {
-            user_id: req.user.user_id,
-          },
-          jwtTokenSecret,
-          { expiresIn: "10h" }
-        );
-
-        //req.user contains the authenticated user
-        return res.status(201).json({
-          user: {
-            user_id: req.user.user_id,
-            username: req.user.username,
-            email: req.user.email,
-            user_type: req.user.user_type,
-          },
-          token: token,
-        });
+      //req.user contains the authenticated user
+      return res.status(201).json({
+        user: {
+          user_id: req.user.user_id,
+          username: req.user.username,
+          email: req.user.email,
+          user_type: req.user.user_type,
+        },
+        token: token,
       });
-    })(req, res, next);
-  }
-);
+    });
+  })(req, res, next);
+});
 
 //authenticate user session
 app.get(
