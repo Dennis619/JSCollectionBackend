@@ -87,7 +87,7 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir); // Temporary folder on Node.js server
   },
   filename: (req, file, cb) => {
-    cb(null, file.originalname); // Fixed template string usage
+    cb(null, file.originalname); // Fixed template string usagee
   },
 });
 
