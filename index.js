@@ -18,6 +18,7 @@ import { pgDump, pgRestore } from "pg-dump-restore"; // Ensure these are needed
 import cron from "node-cron";
 import { to as copyTo, from as copyFrom } from "pg-copy-streams"; // Ensure these are needed
 import { pipeline } from "stream/promises"; // Updated import
+import ftp from "basic-ftp";
 
 // Load environment variables
 dotenv.config();
@@ -76,8 +77,7 @@ const transporter = nodemailer.createTransport({
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(__dirname, "Images", "All_Images");
-    cb(null, dir); // Use path.join for cross-platform compatibility
+    cb(null, "uploads"); // Temporary folder on Node.js server
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // Fixed template string usage
@@ -86,6 +86,24 @@ const storage = multer.diskStorage({
 
 // Multer middleware
 const upload = multer({ storage });
+
+// FTP Upload Function
+async function uploadToFTP(localFilePath, remoteFilePath) {
+  const client = new ftp.Client();
+  try {
+    await client.access({
+      host: "ftp.jscollection.co.ke", // FTP host
+      user: "sombadennis@jscollection.co.ke", // FTP username
+      password: "b8?(rgSs67i}", // FTP password
+    });
+    await client.uploadFrom(localFilePath, remoteFilePath);
+  } catch (err) {
+    console.error("FTP Upload Error:", err);
+    throw err;
+  } finally {
+    client.close();
+  }
+}
 
 /*
 // Connect to the database using connection pool
@@ -3310,6 +3328,61 @@ app.delete("/slide_show", async (req, res) => {
 });
 
 /***********************UPLOAD IMAGES *************/
+// Endpoint to handle multiple file uploads
+app.post("/upload", upload.array("files"), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send("No files were uploaded.");
+    }
+
+    const uploadResults = [];
+    for (const file of req.files) {
+      const localFilePath = path.join(__dirname, "uploads", file.filename);
+      const remoteFilePath = `/public/JSImages/${file.filename}`; // Adjust path to your server's public folder
+
+      await uploadToFTP(localFilePath, remoteFilePath);
+      uploadResults.push(file.filename);
+    }
+
+    res.status(200).json({
+      message: "Files uploaded successfully!",
+      files: uploadResults,
+    });
+  } catch (err) {
+    console.error("Error uploading files:", err);
+    res.status(500).json({
+      message: "Error uploading files",
+      error: err.message,
+    });
+  }
+});
+
+// Endpoint to handle single file uploads
+app.post("/upload-single", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send("No file was uploaded.");
+    }
+
+    const localFilePath = path.join(__dirname, "uploads", req.file.filename);
+    const remoteFilePath = `/public/JSImages/${req.file.filename}`; // Adjust path to your server's public folder
+
+    await uploadToFTP(localFilePath, remoteFilePath);
+
+    res.status(200).json({
+      message: "File uploaded successfully!",
+      file: req.file.filename,
+    });
+  } catch (err) {
+    console.error("Error uploading file:", err);
+    res.status(500).json({
+      message: "Error uploading file",
+      error: err.message,
+    });
+  }
+});
+
+/*
 app.post("/upload", upload.array("files"), async (req, res) => {
   try {
     res.status(200).send("Files uploaded successfully");
@@ -3318,6 +3391,7 @@ app.post("/upload", upload.array("files"), async (req, res) => {
   }
 });
 
+
 app.post("/upload-single", upload.single("file"), async (req, res) => {
   try {
     res.status(200).send("Files uploaded successfully");
@@ -3325,6 +3399,7 @@ app.post("/upload-single", upload.single("file"), async (req, res) => {
     res.status(500).send("Error uploading files", err);
   }
 });
+*/
 /*************  PASSPORT **********/
 //passport log in
 passport.use(
