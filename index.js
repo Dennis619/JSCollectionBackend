@@ -76,7 +76,7 @@ const transporter = nodemailer.createTransport({
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../Client/public/Images/All_Images")); // Use path.join for cross-platform compatibility
+    cb(null, path.join(__dirname, "/Images/All_Images")); // Use path.join for cross-platform compatibility
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // Fixed template string usage
