@@ -77,7 +77,11 @@ const transporter = nodemailer.createTransport({
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads"); // Temporary folder on Node.js server
+    const uploadsDir = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    cb(null, uploadsDir); // Temporary folder on Node.js server
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // Fixed template string usage
@@ -3341,6 +3345,7 @@ app.post("/upload", upload.array("files"), async (req, res) => {
       const remoteFilePath = `/public/JSImages/${file.filename}`; // Adjust path to your server's public folder
 
       await uploadToFTP(localFilePath, remoteFilePath);
+      fs.unlinkSync(localFilePath); // Delete the local file
       uploadResults.push(file.filename);
     }
 
@@ -3368,6 +3373,7 @@ app.post("/upload-single", upload.single("file"), async (req, res) => {
     const remoteFilePath = `/public/JSImages/${req.file.filename}`; // Adjust path to your server's public folder
 
     await uploadToFTP(localFilePath, remoteFilePath);
+    fs.unlinkSync(localFilePath); // Delete the local file
 
     res.status(200).json({
       message: "File uploaded successfully!",
