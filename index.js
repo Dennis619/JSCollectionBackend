@@ -890,7 +890,7 @@ app.post("/users-register", async (req, res) => {
         } else {
           const query =
             "INSERT INTO users (username, email, password, is_disabled, created_at, updated_at) VALUES($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING *;";
-          const values = [username, email, hash, is_disabled || false];
+          const values = [username.toLowerCase(), email, hash, is_disabled || false];
           const results = await db.query(query, values);
           res.status(200).json(results.rows[0]);
         }
@@ -1060,7 +1060,7 @@ app.put("/users/:id", async (req, res) => {
       "UPDATE users SET username =$2, email=$3, password=$4, is_disabled=$5, user_type=$6, updated_at=CURRENT_TIMESTAMP WHERE user_id = $1 RETURNING *;";
     const values = [
       id,
-      username || existingUser.username,
+      username.toLowerCase() || existingUser.username,
       email || existingUser.email,
       password || existingUser.password,
       is_disabled || existingUser.is_disabled,
@@ -1100,7 +1100,7 @@ app.patch("/users/:id", async (req, res) => {
     const query =
       "UPDATE users SET username =$1, email=$2, password=$3, is_disabled=$4, updated_at=CURRENT_TIMESTAMP WHERE user_id = $5 RETURNING *;";
     const values = [
-      username || userData.username,
+      username.toLowerCase() || userData.username,
       email || userData.email,
       password || userData.password,
       is_disabled || userData.is_disabled,
@@ -2257,7 +2257,7 @@ app.get("/table-data/:tableName", async (req, res) => {
         ];
         query = `SELECT ${columnsToDisplay.join(
           ", "
-        )} FROM public.${table_name} WHERE username != 'Administrator'`;
+        )} FROM public.${table_name} WHERE username != 'administrator'`;
         break;
       case "products":
         columnsToDisplay = [
@@ -3327,7 +3327,7 @@ passport.use(
         //no username
         return cb("Email/ Password error");
       }
-      const user = results.rows[0];
+      const user = results.rows[0].toLowerCase();
       //check if password matches
       bcrypt.compare(password, user.password, (err, result) => {
         if (err) {
