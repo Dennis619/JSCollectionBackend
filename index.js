@@ -78,7 +78,8 @@ const transporter = nodemailer.createTransport({
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
 // Configure multer for file storage
-const storage = multer.diskStorage({
+/*
+const storage = multer.diskStorage({  
   destination: (req, file, cb) => {
     const uploadsDir = path.join(__dirname, "uploads");
     if (!fs.existsSync(uploadsDir)) {
@@ -90,9 +91,19 @@ const storage = multer.diskStorage({
     cb(null, file.originalname); // Fixed template string usagee
   },
 });
+*/
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./public/uploads"); // Store in the 'uploads' directory inside 'public'
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Use the file's original name or a timestamp
+  },
+});
 
 // Multer middleware
-const upload = multer({ storage });
+//const upload = multer({ storage });
+const upload = multer({ storage: storage });
 
 // FTP Upload Function
 async function uploadToFTP(localFilePath, remoteFilePath) {
@@ -3335,6 +3346,10 @@ app.delete("/slide_show", async (req, res) => {
 });
 
 /***********************UPLOAD IMAGES *************/
+app.post("/upload-single", upload.single("file"), (req, res) => {
+  res.send({ filePath: `/uploads/${req.file.filename}` });
+});
+/*
 // Endpoint to handle multiple file uploads
 app.post("/upload", upload.array("files"), async (req, res) => {
   try {
@@ -3391,7 +3406,7 @@ app.post("/upload-single", upload.single("file"), async (req, res) => {
   }
 });
 
-/*
+
 app.post("/upload", upload.array("files"), async (req, res) => {
   try {
     res.status(200).send("Files uploaded successfully");
