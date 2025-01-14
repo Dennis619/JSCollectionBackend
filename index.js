@@ -76,7 +76,8 @@ const transporter = nodemailer.createTransport({
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "/Images/All_Images")); // Use path.join for cross-platform compatibility
+    const dir = path.join(__dirname, "Images", "All_Images");
+    cb(null, dir); // Use path.join for cross-platform compatibility
   },
   filename: (req, file, cb) => {
     cb(null, file.originalname); // Fixed template string usage
@@ -872,33 +873,49 @@ app.get("/users-filter", async (req, res) => {
 app.post("/users-register", async (req, res) => {
   try {
     const { username, email, password, is_disabled } = req.body;
-    //check if username exists
+
+    // Check if username exists
     const checkUserName = await db.query(
       "SELECT * FROM users WHERE username = $1",
-      [username]
+      [username.toLowerCase()]
     );
-    const checkUser = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
-    if (checkUser.rows.length > 0 && checkUserName.rows.length > 0) {
-      return res.status(409).send("User Exists");
-    } else {
-      //password hashing
-      bcrypt.hash(password, saltRounds, async (err, hash) => {
-        if (err) {
-          console.log("Error while Hashing", err);
-        } else {
-          const query =
-            "INSERT INTO users (username, email, password, is_disabled, created_at, updated_at) VALUES($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING *;";
-          const values = [username.toLowerCase(), email, hash, is_disabled || false];
-          const results = await db.query(query, values);
-          res.status(200).json(results.rows[0]);
-        }
-      });
+
+    // Check if email exists
+    const checkUserEmail = await db.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email.toLowerCase()]
+    );
+
+    // If username exists
+    if (checkUserName.rows.length > 0) {
+      return res.status(409).send("Username already exists");
     }
+
+    // If email exists
+    if (checkUserEmail.rows.length > 0) {
+      return res.status(409).send("Email already exists");
+    }
+
+    // Password hashing using async/await
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Insert new user into the database
+    const query =
+      "INSERT INTO users (username, email, password, is_disabled, created_at, updated_at) VALUES($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING *;";
+    const values = [
+      username.toLowerCase(),
+      email.toLowerCase(),
+      hashedPassword,
+      is_disabled || false,
+    ];
+
+    const results = await db.query(query, values);
+
+    // Respond with the newly created user
+    res.status(200).json(results.rows[0]);
   } catch (err) {
-    console.error("An Error occured when getting userss from db ", err.stack);
-    res.status(500).send({ error: err.stack });
+    console.error("An error occurred while registering user:", err.stack);
+    res.status(500).send({ error: "An error occurred during registration" });
   }
 });
 
@@ -1061,7 +1078,7 @@ app.put("/users/:id", async (req, res) => {
     const values = [
       id,
       username.toLowerCase() || existingUser.username,
-      email || existingUser.email,
+      email.toLowerCase() || existingUser.email,
       password || existingUser.password,
       is_disabled || existingUser.is_disabled,
       user_type || existingUser.user_type,
@@ -1101,7 +1118,7 @@ app.patch("/users/:id", async (req, res) => {
       "UPDATE users SET username =$1, email=$2, password=$3, is_disabled=$4, updated_at=CURRENT_TIMESTAMP WHERE user_id = $5 RETURNING *;";
     const values = [
       username.toLowerCase() || userData.username,
-      email || userData.email,
+      email.toLowerCase() || userData.email,
       password || userData.password,
       is_disabled || userData.is_disabled,
       id,
