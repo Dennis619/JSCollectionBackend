@@ -74,6 +74,9 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Get the current directory path from import.meta.url
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
 // Configure multer for file storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
