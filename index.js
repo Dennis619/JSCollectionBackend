@@ -3313,7 +3313,7 @@ app.post("/upload-single", upload.single("file"), async (req, res) => {
 passport.use(
   new LocalStrategy(async function verify(username, password, cb) {
     try {
-      const email = username;
+      const email = username.toLowerCase();
       //const { email, password } = req.body;
       if (email === "" || password === "") {
         res.status(404).send({ error: "Enter Email and Password" });
@@ -3327,7 +3327,7 @@ passport.use(
         //no username
         return cb("Email/ Password error");
       }
-      const user = results.rows[0].toLowerCase();
+      const user = results.rows[0];
       //check if password matches
       bcrypt.compare(password, user.password, (err, result) => {
         if (err) {
