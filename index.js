@@ -100,7 +100,7 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname)); // Use the file's original name or a timestamp
   },
 });
-*/
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = path.join(__dirname, "jscollection.co.ke", "public");
@@ -114,9 +114,47 @@ const storage = multer.diskStorage({
 
 // Multer middleware
 //const upload = multer({ storage });
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+*/
+
+// Configure multer storage
+const storage = multer.memoryStorage(); // Store files in memory
 const upload = multer({ storage: storage });
 
+// FTP client configuration
+const ftpConfig = {
+  host: "ftp.jscollection.co.ke", // Replace with your FTP server address
+  user: "sombadennis@jscollection.co.ke", // FTP username
+  password: "b8?(rgSs67i}", // FTP password
+};
+async function uploadToFTP(buffer, remotePath) {
+  const client = new ftp.Client();
+  client.ftp.verbose = true;
+
+  try {
+    await client.access(ftpConfig);
+    console.log("Connected to FTP server");
+
+    // Ensure the directory exists
+    const directory = path.dirname(remotePath);
+    await client.ensureDir(directory);
+
+    // Upload the file
+    await client.uploadFrom(buffer, remotePath);
+    console.log(`File uploaded to: ${remotePath}`);
+  } catch (err) {
+    console.error("FTP upload failed:", err);
+    throw err;
+  } finally {
+    client.close();
+  }
+}
+
 // FTP Upload Function
+/*
 async function uploadToFTP(localFilePath, remoteFilePath) {
   const client = new ftp.Client();
   try {
@@ -133,6 +171,7 @@ async function uploadToFTP(localFilePath, remoteFilePath) {
     client.close();
   }
 }
+  */
 
 /*
 // Connect to the database using connection pool
@@ -3357,8 +3396,69 @@ app.delete("/slide_show", async (req, res) => {
 });
 
 /***********************UPLOAD IMAGES *************/
+/*
 app.post("/upload-single", upload.single("file"), (req, res) => {
   res.send({ filePath: `/uploads/${req.file.filename}` });
+});
+*/
+// Endpoint to handle file uploads
+app.post("/upload", upload.array("files"), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send("No files were uploaded.");
+    }
+
+    const uploadResults = [];
+    for (const file of req.files) {
+      const remoteFilePath = `/public/${file.originalname}`; // Target the public folder
+      try {
+        await uploadToFTP(file.buffer, remoteFilePath);
+        uploadResults.push(file.originalname);
+      } catch (err) {
+        console.error(`Failed to upload ${file.originalname}:`, err);
+      }
+    }
+
+    res.status(200).json({
+      message: "Files uploaded successfully!",
+      files: uploadResults,
+    });
+  } catch (err) {
+    console.error("Error uploading files:", err);
+    res.status(500).json({
+      message: "Error uploading files",
+      error: err.message,
+    });
+  }
+});
+app.post("/upload-single", upload.array("files"), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send("No files were uploaded.");
+    }
+
+    const uploadResults = [];
+    for (const file of req.files) {
+      const remoteFilePath = `/public/${file.originalname}`; // Target the public folder
+      try {
+        await uploadToFTP(file.buffer, remoteFilePath);
+        uploadResults.push(file.originalname);
+      } catch (err) {
+        console.error(`Failed to upload ${file.originalname}:`, err);
+      }
+    }
+
+    res.status(200).json({
+      message: "Files uploaded successfully!",
+      files: uploadResults,
+    });
+  } catch (err) {
+    console.error("Error uploading files:", err);
+    res.status(500).json({
+      message: "Error uploading files",
+      error: err.message,
+    });
+  }
 });
 /*
 // Endpoint to handle multiple file uploads
