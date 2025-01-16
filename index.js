@@ -94,7 +94,7 @@ const storage = multer.diskStorage({
 */
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "./public/uploads"); // Store in the 'uploads' directory inside 'public'
+    cb(null, "./jscollection.co.ke/public"); // Store in the 'uploads' directory inside 'public'
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname)); // Use the file's original name or a timestamp
