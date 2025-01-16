@@ -3439,7 +3439,7 @@ app.post("/upload-single", upload.array("files"), async (req, res) => {
 
     const uploadResults = [];
     for (const file of req.files) {
-      const remoteFilePath = `/public/${file.originalname}`; // Target the public folder
+      const remoteFilePath = `/public/${file.originalname}`; // Target the public folde
       try {
         await uploadToFTP(file.buffer, remoteFilePath);
         uploadResults.push(file.originalname);
@@ -3447,6 +3447,7 @@ app.post("/upload-single", upload.array("files"), async (req, res) => {
         console.error(`Failed to upload ${file.originalname}:`, err);
       }
     }
+
 
     res.status(200).json({
       message: "Files uploaded successfully!",
