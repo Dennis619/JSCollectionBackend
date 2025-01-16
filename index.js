@@ -91,10 +91,21 @@ const storage = multer.diskStorage({
     cb(null, file.originalname); // Fixed template string usagee
   },
 });
-*/
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "./jscollection.co.ke/public"); // Store in the 'uploads' directory inside 'public'
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Use the file's original name or a timestamp
+  },
+});
+*/
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, "jscollection.co.ke", "public");
+    fs.mkdirSync(dir, { recursive: true }); // Ensure the directory exists
+    cb(null, dir);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + path.extname(file.originalname)); // Use the file's original name or a timestamp
