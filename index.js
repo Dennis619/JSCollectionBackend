@@ -118,11 +118,23 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
 });
-*/
+
 
 // Configure multer storage
 const storage = multer.memoryStorage(); // Store files in memory
 const upload = multer({ storage: storage });
+*/
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Folder to store uploaded files
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+  },
+});
+
+const upload = multer({ storage });
 
 // FTP client configuration
 const ftpConfig = {
@@ -3401,37 +3413,16 @@ app.post("/upload-single", upload.single("file"), (req, res) => {
   res.send({ filePath: `/uploads/${req.file.filename}` });
 });
 */
-// Endpoint to handle file uploads
-app.post("/upload", upload.array("files"), async (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).send("No files were uploaded.");
-    }
-
-    const uploadResults = [];
-    for (const file of req.files) {
-      const remoteFilePath = `/public/${file.originalname}`; // Target the public folder
-      try {
-        await uploadToFTP(file.buffer, remoteFilePath);
-        uploadResults.push(file.originalname);
-      } catch (err) {
-        console.error(`Failed to upload ${file.originalname}:`, err);
-      }
-    }
-
-    res.status(200).json({
-      message: "Files uploaded successfully!",
-      files: uploadResults,
-    });
-  } catch (err) {
-    console.error("Error uploading files:", err);
-    res.status(500).json({
-      message: "Error uploading files",
-      error: err.message,
-    });
+// Endpoint to handle file upload
+app.post("/upload-single", upload.single("image"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("No file uploaded.");
   }
+  res
+    .status(200)
+    .json({ message: "File uploaded successfully!", file: req.file });
 });
-app.post("/upload-single", upload.array("files"), async (req, res) => {
+app.post("/upload", upload.array("files"), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).send("No files were uploaded.");
@@ -3447,7 +3438,6 @@ app.post("/upload-single", upload.array("files"), async (req, res) => {
         console.error(`Failed to upload ${file.originalname}:`, err);
       }
     }
-
 
     res.status(200).json({
       message: "Files uploaded successfully!",
